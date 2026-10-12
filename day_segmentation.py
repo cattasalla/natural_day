@@ -132,9 +132,12 @@ bao_times = list(bao_day_times)[:-1] + list(bao_night_times)
 #print(bao_dataframe)
 #print(nayi_bizana_dataframe)
 if args.write == "bizana" or args.write == "both":
-    nayi_bizana_dataframe.to_csv(f"{now.date}_bizana.csv")
+    print(nayi_bizana_dataframe)
+    nayi_bizana_dataframe.to_csv(f"{now.strftime("%Y%m%d")}_bizana.csv", index=False)
 if args.write == "bao" or args.write == "both":
-    bao_dataframe.to_csv(f"{now.date}_bao.csv")
+    bao_dataframe.to_csv(f"{now.strftime("%Y%m%d")}_bao.csv", index=False)
+if args.write == "nayi" or args.write == "both":
+    nayi_bizana_dataframe.loc[0::60].to_csv(f"{now.strftime("%Y%m%d")}_nayi.csv", index=False)
 
 
 if not args.date:

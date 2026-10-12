@@ -79,6 +79,12 @@ def get_oneday_data(BASE, params):
         params = params
     ).json()['properties']['data']
 
+def get_nxtday_data(BASE, params, now):
+    params_local = params
+    params_local['date'] = dt.strftime(now + timedelta(days=1), '%Y-%m-%d')
+    return get_oneday_data(BASE, params_local)
+    
+
 def get_phen_time(data, phen, phenfield='phen'):
     return [item for item in data if item[phenfield] == phen][0]['time']
 
@@ -98,8 +104,31 @@ def get_phen_datetime(oneday_data:dict, body:str = 'sun', phen:str='Rise', phenf
     str4_datetime = make_str_for_phen_datetime(oneday_data, body, phen, phenfield)
     return dt.strptime(str4_datetime,datetime_format)
 
-def get_sunrise(oneday_data):
-    return get_phen_datetime(oneday_data, 'sun', 'Rise')
+#def get_sunrise(oneday_data):
+#    return get_phen_datetime(oneday_data, 'sun', 'Rise')
+
+def get_sunrises_sunset(oneday_data, nxtday_data):
+    return (get_phen_datetime(oneday_data, 'sun', 'Rise'),
+        get_phen_datetime(oneday_data, 'sun', 'Set'),
+            get_phen_datetime(nxtday_data, 'sun', 'Rise'))
+
+def get_daylength(sunpoint1, sunpoint2):
+    return sunpoint2 - sunpoint1
+
+def get_unitlength_from_daylength(day_length, n_segments):
+    return  day_length/n_segments
+
+def get_unitlength(sunpoint1, sunpoint2, n_segments):
+    return get_daylength(sunpoint1, sunpoint2)/n_segments
+
+def get_unittimes(sunpoint1, unitlength, n_segments):
+    return [sunpoint1 + unitlength*t for t in range(n_segments+1)]
+
+def make_time_df(unit_name, n, day_times, night_times):
+    return pd.DataFrame({
+        unit_name: list(range(n+1)),
+        'time': list(day_times)[:-1] + list(night_times)
+    })
 
 ##### currently around line 80
 
@@ -117,5 +146,30 @@ def main():
 
     params = get_params(args)
     oneday_data = get_oneday_data(BASE, params)
+    nxtday_data = get_nxtday_data(BASE, params)
 
+    sunrise, sun_set, nxtrise = get_sunrises_sunset(oneday_data, nxtday_data)
 
+    day_length = get_daylength(sunrise, sun_set)
+    bao_day_length = get_unitlength(sunrise, sun_set, 4)
+    nayi_day_length = get_unitlength(sunrise, sun_set, 30)
+    nayipati_day_length = get_unitlength(sunrise, sun_set, 30*4)
+
+    bao_day_times = get_unittimes(sunrise, bao_day_length, 4)
+    nayi_day_times = get_unittimes(sunrise, nayi_day_length, 30)
+    nayipati_day_times = get_unittimes(sunrise, nayi_day_length, 30*4)
+
+    night_length = get_daylength(sun_set, nxtrise)
+    bao_night_length = get_unitlength(sun_set, nxtrise, 4)
+    nayi_night_length = get_unitlength(sun_set, nxtrise, 30)
+    nayipati_night_length = get_unitlength(sun_set, nxtrise, 30*4)
+
+    bao_night_times = get_unittimes(sun_set, bao_night_length, 4)
+    nayi_night_times = get_unittimes(sun_set, nayi_night_length, 30)
+    nayipati_night_times = get_unittimes(sun_set, nayipati_night_length, 30*4)
+
+    bao = make_time_df('bao', 4, bao_day_times, bao_night_times)
+    nayi = make_time_df('nayi', 30, nayi_day_times, nayi_night_times)
+    #nayipati = make_time_df(nayi)
+
+    
